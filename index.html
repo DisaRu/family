@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Семейная рация</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f0f2f5; }
+        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
+        h1 { margin-top: 0; color: #1a1a1a; }
+        input { padding: 12px; width: 80%; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 10px; font-size: 16px; }
+        button { padding: 12px 24px; margin: 5px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
+        #joinBtn { background: #007bff; color: white; }
+        #joinBtn:hover { background: #0056b3; }
+        #createBtn { background: #28a745; color: white; }
+        #createBtn:hover { background: #1e7e34; }
+        #leaveBtn { background: #dc3545; color: white; display: none; }
+        #status { margin-top: 20px; font-weight: bold; color: #555; }
+        #audioContainer { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Семейная рация</h1>
+        <p>Введите ID комнаты, чтобы создать новую или присоединиться к существующей.</p>
+        
+        <div id="joinSection">
+            <input type="text" id="roomIdInput" placeholder="ID комнаты (например, family-123)" autocomplete="off">
+            <br>
+            <button id="createBtn">Создать комнату</button>
+            <button id="joinBtn">Войти</button>
+        </div>
+
+        <div id="callSection" style="display: none;">
+            <p>Вы в комнате: <strong id="currentRoomId"></strong></p>
+            <button id="leaveBtn">Выйти</button>
+        </div>
+
+        <div id="status">Введите ID и нажмите кнопку</div>
+        <div id="audioContainer"></div>
+    </div>
+
+    <!-- Подключаем библиотеку PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
+    <script>
+        // --- Элементы интерфейса ---
+        const roomIdInput = document.getElementById('roomIdInput');
+        const createBtn = document.getElementById('createBtn');
+        const joinBtn = document.getElementById('joinBtn');
+        const leaveBtn = document.getElementById('leaveBtn');
+        const statusDiv = document.getElementById('status');
+        const joinSection = document.getElementById('joinSection');
+        const callSection = document.getElementById('callSection');
+        const currentRoomIdSpan = document.getElementById('currentRoomId');
+        const audioContainer = document.getElementById('audioContainer');
+
+        let peer = null;
+        let currentCall = null;
+        let localStream = null;
+        let currentRoomId = null;
+
+        // --- Вспомогательные функции ---
+        function setStatus(text) {
+            statusDiv.textContent = text;
+        }
+
+        function showCallUI(roomId) {
+            joinSection.style.display = 'none';
+            callSection.style.display = 'block';
+            currentRoomIdSpan.textContent = roomId;
+            leaveBtn.style.display = 'inline-block';
+        }
+
+        function resetUI() {
+            joinSection.style.display = 'block';
+            callSection.style.display = 'none';
+            leaveBtn.style.display = 'none';
+            audioContainer.innerHTML = '';
+            roomIdInput.value = '';
+        }
+
+        // --- Основная логика PeerJS ---
+        async function initPeer() {
+            try {
+                // Запрашиваем доступ к микрофону
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                setStatus('Микрофон подключен. Готово к соединению.');
+            } catch (err) {
+                setStatus('Ошибка: Не удалось получить доступ к микрофону. Разрешите доступ в браузере.');
+                console.error(err);
+                return null;
+            }
+
+            // Создаем Peer. По умолчанию используется бесплатный облачный сервер PeerJS.
+            // Мы не указываем host и key, чтобы подключиться к PeerServer Cloud.
+            const newPeer = new Peer();
+
+            newPeer.on('open', (id) => {
+                console.log('Мой PeerJS ID:', id);
+                setStatus('Готов. Ожидание подключения...');
+            });
+
+            newPeer.on('error', (err) => {
+                console.error('Ошибка PeerJS:', err);
+                if (err.type === 'peer-unavailable') {
+                    setStatus('Ошибка: Комната не найдена. Проверьте ID или создайте новую.');
+                } else {
+                    setStatus('Ошибка соединения: ' + err.type);
+                }
+            });
+
+            // Обработка входящего звонка (когда кто-то присоединяется к нашей комнате)
+            newPeer.on('call', (call) => {
+                setStatus('Входящий звонок...');
+                // Отвечаем на звонок, передавая свой аудиопоток
+                call.answer(localStream);
+                handleCall(call);
+            });
+
+            return newPeer;
+        }
+
+        // Функция для обработки активного звонка (исходящего или входящего)
+        function handleCall(call) {
+            currentCall = call;
+            
+            call.on('stream', (remoteStream) => {
+                setStatus('Соединение установлено! Говорите.');
+                // Создаем аудиоэлемент для прослушивания удаленного потока
+                const audio = document.createElement('audio');
+                audio.srcObject = remoteStream;
+                audio.autoplay = true;
+                audioContainer.appendChild(audio);
+            });
+
+            call.on('close', () => {
+                setStatus('Соединение закрыто.');
+                audioContainer.innerHTML = '';
+                currentCall = null;
+            });
+
+            call.on('error', (err) => {
+                console.error('Ошибка звонка:', err);
+                setStatus('Ошибка во время звонка.');
+            });
+        }
+
+        // --- Обработчики кнопок ---
+
+        // Создать комнату (стать хостом)
+        createBtn.addEventListener('click', async () => {
+            const roomId = roomIdInput.value.trim();
+            if (!roomId) {
+                setStatus('Введите ID комнаты.');
+                return;
+            }
+
+            setStatus('Создание комнаты...');
+            // Для создания комнаты мы инициализируем Peer с конкретным ID.
+            // Этот ID и будет "именем" нашей комнаты.
+            peer = await initPeer(); // Сначала создаем базовый peer
+            if (!peer) return;
+
+            // Пересоздаем peer с нужным ID
+            peer.destroy();
+            const hostPeer = new Peer(roomId);
+            
+            hostPeer.on('open', (id) => {
+                console.log('Комната создана с ID:', id);
+                currentRoomId = id;
+                showCallUI(id);
+                setStatus('Комната создана. Ожидание участников...');
+                // Хост просто ждет входящих звонков (событие 'call')
+            });
+
+            hostPeer.on('error', (err) => {
+                console.error('Ошибка создания комнаты:', err);
+                setStatus('Ошибка: Не удалось создать комнату. Возможно, ID уже занят.');
+            });
+
+            hostPeer.on('call', (call) => {
+                setStatus('Кто-то присоединяется...');
+                call.answer(localStream);
+                handleCall(call);
+            });
+
+            peer = hostPeer; // Заменяем ссылку
+        });
+
+        // Войти в комнату (позвонить хосту)
+        joinBtn.addEventListener('click', async () => {
+            const roomId = roomIdInput.value.trim();
+            if (!roomId) {
+                setStatus('Введите ID комнаты.');
+                return;
+            }
+
+            if (!peer) {
+                peer = await initPeer();
+                if (!peer) return;
+            }
+
+            setStatus('Подключение к комнате ' + roomId + '...');
+            // Вызываем пира с ID комнаты
+            const call = peer.call(roomId, localStream);
+            if (call) {
+                currentRoomId = roomId;
+                showCallUI(roomId);
+                handleCall(call);
+            } else {
+                setStatus('Не удалось подключиться. Комната не найдена.');
+            }
+        });
+
+        // Выйти из комнаты
+        leaveBtn.addEventListener('click', () => {
+            if (currentCall) {
+                currentCall.close();
+                currentCall = null;
+            }
+            if (peer) {
+                peer.destroy();
+                peer = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            resetUI();
+            setStatus('Вы вышли из комнаты.');
+        });
+    </script>
+</body>
+</html>
