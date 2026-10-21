@@ -5,45 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Семейная рация</title>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f0f2f5; }
-        .container { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
-        h1 { margin-top: 0; color: #1a1a1a; }
-        input { padding: 12px; width: 80%; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 10px; font-size: 16px; }
-        button { padding: 12px 24px; margin: 5px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: background 0.2s; }
-        #joinBtn { background: #007bff; color: white; }
-        #joinBtn:hover { background: #0056b3; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f0f2f5; }
+        .app-container { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); width: 90%; max-width: 480px; }
+        h1 { margin-top: 0; color: #1a1a1a; text-align: center; }
+        .join-section { text-align: center; }
+        input[type="text"] { padding: 14px; width: 80%; border: 2px solid #e0e0e0; border-radius: 10px; margin-bottom: 12px; font-size: 16px; transition: border-color 0.2s; }
+        input[type="text"]:focus { outline: none; border-color: #007bff; }
+        button { padding: 14px 28px; margin: 4px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+        button:active { transform: scale(0.98); }
         #createBtn { background: #28a745; color: white; }
-        #createBtn:hover { background: #1e7e34; }
+        #createBtn:hover { background: #218838; }
+        #joinBtn { background: #007bff; color: white; }
+        #joinBtn:hover { background: #0069d9; }
         #leaveBtn { background: #dc3545; color: white; display: none; }
-        #status { margin-top: 20px; font-weight: bold; color: #555; }
-        #audioContainer { margin-top: 20px; }
+        #leaveBtn:hover { background: #c82333; }
+        #status { margin-top: 16px; font-weight: 500; color: #555; text-align: center; min-height: 24px; }
+        
+        /* Стили для комнаты */
+        #roomSection { display: none; }
+        .room-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #eee; }
+        .room-header h2 { margin: 0; font-size: 1.2rem; color: #333; }
+        #roomIdDisplay { font-family: monospace; background: #f8f9fa; padding: 4px 8px; border-radius: 6px; }
+        
+        /* Список участников */
+        .participants-section { margin-bottom: 16px; }
+        .participants-section h3 { font-size: 0.9rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        #participantsList { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+        #participantsList li { background: #e9ecef; padding: 6px 12px; border-radius: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; transition: background 0.2s, box-shadow 0.2s; }
+        #participantsList li.speaking { background: #d4edda; box-shadow: 0 0 0 2px #28a745; font-weight: 600; }
+        #participantsList li .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #adb5bd; }
+        #participantsList li.speaking .status-dot { background: #28a745; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        /* Чат */
+        .chat-section { border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
+        #chatMessages { height: 240px; overflow-y: auto; padding: 12px; background: #fafafa; display: flex; flex-direction: column; gap: 8px; }
+        .message { padding: 8px 12px; border-radius: 12px; max-width: 80%; font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; }
+        .message.own { align-self: flex-end; background: #007bff; color: white; border-bottom-right-radius: 4px; }
+        .message.other { align-self: flex-start; background: #e9ecef; color: #333; border-bottom-left-radius: 4px; }
+        .message .sender { font-size: 0.75rem; opacity: 0.7; margin-bottom: 2px; display: block; }
+        .message.own .sender { color: #cce5ff; }
+        
+        .chat-input-area { display: flex; border-top: 1px solid #eee; }
+        #chatInput { flex: 1; border: none; padding: 14px; font-size: 16px; outline: none; }
+        #sendMsgBtn { border: none; background: #007bff; color: white; padding: 0 20px; font-weight: 600; cursor: pointer; border-radius: 0; margin: 0; }
+        #sendMsgBtn:hover { background: #0069d9; }
+        
+        /* Аудио-элементы (скрыты) */
+        #audioContainer { display: none; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="app-container">
         <h1>🎙️ Семейная рация</h1>
-        <p>Введите ID комнаты, чтобы создать новую или присоединиться к существующей.</p>
         
-        <div id="joinSection">
+        <!-- Секция входа -->
+        <div id="joinSection" class="join-section">
+            <p style="color: #666; font-size: 0.95rem;">Введите ID комнаты, чтобы создать новую или присоединиться к существующей.</p>
             <input type="text" id="roomIdInput" placeholder="ID комнаты (например, family-123)" autocomplete="off">
             <br>
             <button id="createBtn">Создать комнату</button>
             <button id="joinBtn">Войти</button>
         </div>
 
-        <div id="callSection" style="display: none;">
-            <p>Вы в комнате: <strong id="currentRoomId"></strong></p>
-            <button id="leaveBtn">Выйти</button>
+        <!-- Секция комнаты -->
+        <div id="roomSection">
+            <div class="room-header">
+                <h2>Комната: <span id="roomIdDisplay"></span></h2>
+                <button id="leaveBtn">Выйти</button>
+            </div>
+
+            <!-- Список участников -->
+            <div class="participants-section">
+                <h3>Участники</h3>
+                <ul id="participantsList"></ul>
+            </div>
+
+            <!-- Чат -->
+            <div class="chat-section">
+                <div id="chatMessages"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Введите сообщение..." autocomplete="off">
+                    <button id="sendMsgBtn">➤</button>
+                </div>
+            </div>
         </div>
 
         <div id="status">Введите ID и нажмите кнопку</div>
         <div id="audioContainer"></div>
     </div>
 
-    <!-- Подключаем библиотеку PeerJS -->
+    <!-- Подключаем библиотеки -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/hark@1.2.3/hark.bundle.js"></script>
     
     <script>
+        // --- КОНФИГУРАЦИЯ ВАШЕГО СЕРВЕРА LAYERO ---
+        const PEER_SERVER_HOST = 'family-1-main.layero.app'; 
+        const PEER_SERVER_PORT = 443; 
+        const PEER_SERVER_PATH = '/';
+
         // --- Элементы интерфейса ---
         const roomIdInput = document.getElementById('roomIdInput');
         const createBtn = document.getElementById('createBtn');
@@ -51,104 +112,236 @@
         const leaveBtn = document.getElementById('leaveBtn');
         const statusDiv = document.getElementById('status');
         const joinSection = document.getElementById('joinSection');
-        const callSection = document.getElementById('callSection');
-        const currentRoomIdSpan = document.getElementById('currentRoomId');
+        const roomSection = document.getElementById('roomSection');
+        const roomIdDisplay = document.getElementById('roomIdDisplay');
+        const participantsList = document.getElementById('participantsList');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendMsgBtn = document.getElementById('sendMsgBtn');
         const audioContainer = document.getElementById('audioContainer');
 
+        // --- Глобальное состояние ---
         let peer = null;
-        let currentCall = null;
         let localStream = null;
         let currentRoomId = null;
+        
+        // Хранилища активных соединений
+        const activeCalls = new Map();        
+        const activeDataConnections = new Map(); 
+        const participantNames = new Map();   
+        const harkInstances = new Map();      
 
         // --- Вспомогательные функции ---
         function setStatus(text) {
             statusDiv.textContent = text;
         }
 
-        function showCallUI(roomId) {
+        function showRoomUI(roomId) {
             joinSection.style.display = 'none';
-            callSection.style.display = 'block';
-            currentRoomIdSpan.textContent = roomId;
+            roomSection.style.display = 'block';
+            roomIdDisplay.textContent = roomId;
             leaveBtn.style.display = 'inline-block';
+            setStatus('Вы в комнате. Говорите или пишите.');
         }
 
         function resetUI() {
             joinSection.style.display = 'block';
-            callSection.style.display = 'none';
+            roomSection.style.display = 'none';
             leaveBtn.style.display = 'none';
-            audioContainer.innerHTML = '';
             roomIdInput.value = '';
+            chatMessages.innerHTML = '';
+            participantsList.innerHTML = '';
+            setStatus('Вы вышли из комнаты.');
         }
 
-        // --- Основная логика PeerJS ---
-        async function initPeer() {
+        function renderParticipants() {
+            const myId = peer ? peer.id : 'me';
+            const allIds = new Set([myId, ...activeCalls.keys(), ...activeDataConnections.keys()]);
+            
+            participantsList.innerHTML = '';
+            allIds.forEach(id => {
+                const li = document.createElement('li');
+                li.dataset.peerId = id;
+                
+                const dot = document.createElement('span');
+                dot.className = 'status-dot';
+                
+                const nameSpan = document.createElement('span');
+                if (id === myId) {
+                    nameSpan.textContent = 'Вы';
+                } else {
+                    nameSpan.textContent = participantNames.get(id) || `Участник (${id.slice(0, 4)}...)`;
+                }
+                
+                li.appendChild(dot);
+                li.appendChild(nameSpan);
+                participantsList.appendChild(li);
+            });
+        }
+
+        function addChatMessage(text, senderId, isOwn) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+            
+            const senderSpan = document.createElement('span');
+            senderSpan.className = 'sender';
+            if (isOwn) {
+                senderSpan.textContent = 'Вы';
+            } else {
+                senderSpan.textContent = participantNames.get(senderId) || `Участник (${senderId.slice(0, 4)}...)`;
+            }
+            
+            const textNode = document.createTextNode(text);
+            msgDiv.appendChild(senderSpan);
+            msgDiv.appendChild(textNode);
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function setSpeaking(peerId, isSpeaking) {
+            const li = participantsList.querySelector(`li[data-peer-id="${peerId}"]`);
+            if (li) {
+                if (isSpeaking) {
+                    li.classList.add('speaking');
+                } else {
+                    li.classList.remove('speaking');
+                }
+            }
+        }
+
+        function setupHark(peerId, stream) {
+            if (harkInstances.has(peerId)) return; 
+            const speechEvents = hark(stream, {});
+            speechEvents.on('speaking', () => setSpeaking(peerId, true));
+            speechEvents.on('stopped_speaking', () => setSpeaking(peerId, false));
+            harkInstances.set(peerId, speechEvents);
+        }
+
+        // --- Инициализация Peer ---
+        async function initPeer(customId = null) {
             try {
-                // Запрашиваем доступ к микрофону
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                setStatus('Микрофон подключен. Готово к соединению.');
             } catch (err) {
-                setStatus('Ошибка: Не удалось получить доступ к микрофону. Разрешите доступ в браузере.');
-                console.error(err);
+                setStatus('Ошибка: Не удалось получить доступ к микрофону.');
                 return null;
             }
 
-            // Создаем Peer. По умолчанию используется бесплатный облачный сервер PeerJS.
-            // Мы не указываем host и key, чтобы подключиться к PeerServer Cloud.
-            const newPeer = new Peer();
+            const peerOptions = {
+                host: PEER_SERVER_HOST,
+                port: PEER_SERVER_PORT,
+                path: PEER_SERVER_PATH,
+                secure: true,
+                debug: 1
+            };
+            
+            const newPeer = customId ? new Peer(customId, peerOptions) : new Peer(peerOptions);
 
             newPeer.on('open', (id) => {
                 console.log('Мой PeerJS ID:', id);
-                setStatus('Готов. Ожидание подключения...');
+                setStatus('Подключено к серверу. Готов.');
+                renderParticipants();
             });
 
             newPeer.on('error', (err) => {
                 console.error('Ошибка PeerJS:', err);
                 if (err.type === 'peer-unavailable') {
                     setStatus('Ошибка: Комната не найдена. Проверьте ID или создайте новую.');
+                } else if (err.type === 'unavailable-id') {
+                    setStatus('Ошибка: Этот ID комнаты уже занят. Попробуйте другой.');
                 } else {
                     setStatus('Ошибка соединения: ' + err.type);
                 }
             });
 
-            // Обработка входящего звонка (когда кто-то присоединяется к нашей комнате)
             newPeer.on('call', (call) => {
-                setStatus('Входящий звонок...');
-                // Отвечаем на звонок, передавая свой аудиопоток
+                setStatus('Входящий голосовой вызов...');
                 call.answer(localStream);
-                handleCall(call);
+                handleMediaCall(call);
+            });
+
+            newPeer.on('connection', (conn) => {
+                handleDataConnection(conn);
             });
 
             return newPeer;
         }
 
-        // Функция для обработки активного звонка (исходящего или входящего)
-        function handleCall(call) {
-            currentCall = call;
+        // --- Обработка медиа-соединений ---
+        function handleMediaCall(call) {
+            const peerId = call.peer;
+            activeCalls.set(peerId, call);
             
             call.on('stream', (remoteStream) => {
-                setStatus('Соединение установлено! Говорите.');
-                // Создаем аудиоэлемент для прослушивания удаленного потока
+                setStatus(`Соединение с ${participantNames.get(peerId) || peerId.slice(0,4)} установлено!`);
                 const audio = document.createElement('audio');
                 audio.srcObject = remoteStream;
                 audio.autoplay = true;
                 audioContainer.appendChild(audio);
+                setupHark(peerId, remoteStream);
+                renderParticipants();
             });
 
             call.on('close', () => {
-                setStatus('Соединение закрыто.');
-                audioContainer.innerHTML = '';
-                currentCall = null;
+                activeCalls.delete(peerId);
+                renderParticipants();
             });
 
             call.on('error', (err) => {
-                console.error('Ошибка звонка:', err);
-                setStatus('Ошибка во время звонка.');
+                activeCalls.delete(peerId);
+                renderParticipants();
             });
+        }
+
+        // --- Обработка соединений данных ---
+        function handleDataConnection(conn) {
+            const peerId = conn.peer;
+            activeDataConnections.set(peerId, conn);
+            renderParticipants();
+
+            conn.on('open', () => console.log(`Data connection opened with ${peerId}`));
+
+            conn.on('data', (data) => {
+                try {
+                    const message = JSON.parse(data);
+                    if (message.type === 'chat') {
+                        addChatMessage(message.text, peerId, false);
+                    } else if (message.type === 'name') {
+                        participantNames.set(peerId, message.name);
+                        renderParticipants();
+                    }
+                } catch (e) {}
+            });
+
+            conn.on('close', () => {
+                activeDataConnections.delete(peerId);
+                participantNames.delete(peerId);
+                renderParticipants();
+            });
+
+            conn.on('error', (err) => {
+                activeDataConnections.delete(peerId);
+                participantNames.delete(peerId);
+                renderParticipants();
+            });
+        }
+
+        function sendChatMessage() {
+            const text = chatInput.value.trim();
+            if (!text || !peer) return;
+            
+            addChatMessage(text, peer.id, true);
+            
+            activeDataConnections.forEach((conn) => {
+                if (conn.open) {
+                    conn.send(JSON.stringify({ type: 'chat', text: text }));
+                }
+            });
+            
+            chatInput.value = '';
         }
 
         // --- Обработчики кнопок ---
 
-        // Создать комнату (стать хостом)
         createBtn.addEventListener('click', async () => {
             const roomId = roomIdInput.value.trim();
             if (!roomId) {
@@ -157,38 +350,16 @@
             }
 
             setStatus('Создание комнаты...');
-            // Для создания комнаты мы инициализируем Peer с конкретным ID.
-            // Этот ID и будет "именем" нашей комнаты.
-            peer = await initPeer(); // Сначала создаем базовый peer
+            peer = await initPeer(roomId);
             if (!peer) return;
 
-            // Пересоздаем peer с нужным ID
-            peer.destroy();
-            const hostPeer = new Peer(roomId);
-            
-            hostPeer.on('open', (id) => {
-                console.log('Комната создана с ID:', id);
-                currentRoomId = id;
-                showCallUI(id);
-                setStatus('Комната создана. Ожидание участников...');
-                // Хост просто ждет входящих звонков (событие 'call')
+            peer.on('open', () => {
+                currentRoomId = roomId;
+                showRoomUI(roomId);
+                renderParticipants();
             });
-
-            hostPeer.on('error', (err) => {
-                console.error('Ошибка создания комнаты:', err);
-                setStatus('Ошибка: Не удалось создать комнату. Возможно, ID уже занят.');
-            });
-
-            hostPeer.on('call', (call) => {
-                setStatus('Кто-то присоединяется...');
-                call.answer(localStream);
-                handleCall(call);
-            });
-
-            peer = hostPeer; // Заменяем ссылку
         });
 
-        // Войти в комнату (позвонить хосту)
         joinBtn.addEventListener('click', async () => {
             const roomId = roomIdInput.value.trim();
             if (!roomId) {
@@ -196,40 +367,56 @@
                 return;
             }
 
-            if (!peer) {
-                peer = await initPeer();
-                if (!peer) return;
-            }
-
             setStatus('Подключение к комнате ' + roomId + '...');
-            // Вызываем пира с ID комнаты
-            const call = peer.call(roomId, localStream);
-            if (call) {
+            peer = await initPeer();
+            if (!peer) return;
+
+            peer.on('open', () => {
                 currentRoomId = roomId;
-                showCallUI(roomId);
-                handleCall(call);
-            } else {
-                setStatus('Не удалось подключиться. Комната не найдена.');
-            }
+                
+                const call = peer.call(roomId, localStream);
+                if (call) handleMediaCall(call);
+                
+                const conn = peer.connect(roomId);
+                handleDataConnection(conn);
+                
+                conn.on('open', () => {
+                    conn.send(JSON.stringify({ type: 'name', name: 'Участник' }));
+                });
+                
+                showRoomUI(roomId);
+            });
         });
 
-        // Выйти из комнаты
         leaveBtn.addEventListener('click', () => {
-            if (currentCall) {
-                currentCall.close();
-                currentCall = null;
-            }
-            if (peer) {
-                peer.destroy();
-                peer = null;
-            }
+            activeCalls.forEach(call => call.close());
+            activeCalls.clear();
+            
+            activeDataConnections.forEach(conn => conn.close());
+            activeDataConnections.clear();
+            
+            harkInstances.forEach(hark => hark.stop());
+            harkInstances.clear();
+            
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
+            
+            if (peer) {
+                peer.destroy();
+                peer = null;
+            }
+            
+            participantNames.clear();
             resetUI();
-            setStatus('Вы вышли из комнаты.');
         });
+
+        sendMsgBtn.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
     </script>
 </body>
 </html>
